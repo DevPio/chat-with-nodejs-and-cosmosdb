@@ -6,6 +6,14 @@ const app = express();
 
 const http = require("http").Server(app);
 const io = require("socket.io")(http);
+const sharedSession = require("express-socket.io-session");
+const session = expressSession({
+  secret: "socket.io",
+  cookie: {
+    maxAge: 10 * 60 * 1000,
+  },
+});
+
 io.on("connect", async (socket) => {
   console.log("connect", socket.id);
 
@@ -19,28 +27,20 @@ io.on("connect", async (socket) => {
     const dataParse = JSON.parse(data);
     const message = await newMessage(dataParse);
 
-    const messages = await getAllMessage(data.roomId);
-
-    socket.emit("join", messages);
+    socket.to(dataParse.roomId).emit("msg", message.resource);
   });
 
   socket.on("join", async (id) => {
+    socket.join(id);
     const messages = await getAllMessage(id);
 
     console.log(messages);
 
-    socket.emit("join", messages);
+    socket.emit("msgList", messages);
   });
 });
-
-app.use(
-  expressSession({
-    secret: "socket.io",
-    cookie: {
-      maxAge: 10 * 60 * 1000,
-    },
-  })
-);
+io.use(sharedSession(session, { autoSave: true }));
+app.use(session);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use("/css", express.static("css"));

@@ -105,7 +105,7 @@
           socket.emit("join", currentRoom);
         });
 
-        socket.on("join", (messages) => {
+        socket.on("msgList", (messages) => {
           const mapTemplate = messages.map((message) => {
             return `
 
@@ -152,7 +152,7 @@
           if (name) socket.emit("room", name);
         });
 
-        socket.on("msg", (data) => {
+        const addMessageDom = (data) => {
           const element = $(`
           <div class="message">
               <span class="author">${data.userName}</span><br /><span class="msg-body"
@@ -162,21 +162,22 @@
           `);
 
           $("#messages").append(element);
-        });
+        };
+        socket.on("msg", addMessageDom);
         function sendMessage(event) {
           const value = $("#field").val();
 
           let { keyCode } = event;
 
-          if (value && keyCode === 13) {
-            socket.emit(
-              "msg",
-              JSON.stringify({
-                userName: window.contextUser.name,
-                roomId: currentRoom,
-                message: value,
-              })
-            );
+          if (currentRoom && value && keyCode === 13) {
+            const data = {
+              userName: window.contextUser.name,
+              roomId: currentRoom,
+              message: value,
+            };
+            addMessageDom(data);
+            socket.emit("msg", JSON.stringify(data));
+            $("#field").val("");
           }
         }
 
