@@ -1,6 +1,6 @@
 const express = require("express");
 const expressSession = require("express-session");
-const { newMessage } = require("./models/message");
+const { newMessage, getAllMessage } = require("./models/message");
 const { newRoom, getAllRoom } = require("./models/room");
 const app = express();
 
@@ -19,7 +19,17 @@ io.on("connect", async (socket) => {
     const dataParse = JSON.parse(data);
     const message = await newMessage(dataParse);
 
-    socket.emit("msg", message.resource);
+    const messages = await getAllMessage(data.roomId);
+
+    socket.emit("join", messages);
+  });
+
+  socket.on("join", async (id) => {
+    const messages = await getAllMessage(id);
+
+    console.log(messages);
+
+    socket.emit("join", messages);
   });
 });
 
@@ -47,7 +57,9 @@ app.post("/", (req, res) => {
 
   return res.redirect("room");
 });
-
+app.get("/user", (req, res) => {
+  return res.json(req.session.user);
+});
 app.get("/rooms", async (_, res) => {
   const rooms = await getAllRoom();
 

@@ -60,13 +60,7 @@
         <div id="room" class="add-room">+</div>
       </div>
       <div class="room">
-        <div class="messages">
-          <div class="message">
-            <span class="author">Tulio Faria</span><br /><span class="msg-body"
-              >Mensagem aqui</span
-            >
-          </div>
-        </div>
+        <div id="messages" class="messages"></div>
         <div class="new-message-form w-form">
           <form
             id="email-form"
@@ -112,7 +106,23 @@
         });
 
         socket.on("join", (messages) => {
-          console.log(messages);
+          const mapTemplate = messages.map((message) => {
+            return `
+
+              <div class="message">
+              <span class="author">${message.userName}</span><br /><span class="msg-body"
+              >${message.message}</span
+              >
+              </div>
+
+            `;
+          });
+
+          $("#messages").html(mapTemplate.join(""));
+        });
+
+        $.get("/user").then((user) => {
+          window.contextUser = user;
         });
         $.get("/rooms").then((list) => {
           const containerRoom = $(".room-list");
@@ -128,6 +138,7 @@
 
         socket.on("room", (currentRoom) => {
           const containerRoom = $(".room-list");
+          containerRoom.html("");
           const element = $(
             `<li class="room-item" id='${currentRoom.id}'>${currentRoom.name}</li>`
           );
@@ -142,7 +153,15 @@
         });
 
         socket.on("msg", (data) => {
-          console.log(data);
+          const element = $(`
+          <div class="message">
+              <span class="author">${data.userName}</span><br /><span class="msg-body"
+              >${data.message}</span
+              >
+              </div>
+          `);
+
+          $("#messages").append(element);
         });
         function sendMessage(event) {
           const value = $("#field").val();
@@ -153,6 +172,7 @@
             socket.emit(
               "msg",
               JSON.stringify({
+                userName: window.contextUser.name,
                 roomId: currentRoom,
                 message: value,
               })
