@@ -23,6 +23,11 @@ io.on("connect", async (socket) => {
     socket.emit("room", createdItem.resource);
   });
 
+  socket.on("sendAudio", async (blob) => {
+    const message = await newMessage(blob);
+
+    socket.to(blob.roomId).emit("msg", message.resource);
+  });
   socket.on("msg", async (data) => {
     const dataParse = JSON.parse(data);
     const message = await newMessage(dataParse);
@@ -40,6 +45,15 @@ io.on("connect", async (socket) => {
   });
 });
 io.use(sharedSession(session, { autoSave: true }));
+io.use((socket, next) => {
+  const session = socket.handshake.session;
+
+  if (!session.user) {
+    return next(new Error("user is not defined"));
+  }
+
+  return next();
+});
 app.use(session);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());

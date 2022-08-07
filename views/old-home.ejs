@@ -76,7 +76,9 @@
               autofocus="true"
               class="msg w-input"
             ></textarea
-            ><a href="#" class="send-audio w-button">Enviar<br />Áudio</a>
+            ><button id="audio" class="send-audio w-button">
+              Enviar<br />Áudio
+            </button>
           </form>
           <div class="w-form-done">
             <div>Thank you! Your submission has been received!</div>
@@ -99,6 +101,44 @@
         const room = $("#room");
         const socket = io("localhost:3001");
         let currentRoom = "";
+        let permission = false;
+        let mediaRecorder;
+
+        const media = navigator.mediaDevices
+          .getUserMedia({
+            audio: true,
+          })
+          .then((currentStream) => {
+            mediaRecorder = new MediaRecorder(currentStream);
+            permission = true;
+            let chuncks = [];
+            mediaRecorder.ondataavailable = (chunck) => {
+              console.log(chunck.data);
+              chuncks.push(chunck.data);
+            };
+
+            mediaRecorder.onstop = () => {
+              if (!currentRoom) return;
+
+              const fileReader = new FileReader();
+
+              fileReader.onload = () => {
+                console.log(fileReader.result);
+
+                socket.emit("sendAudio", {
+                  userName: window.contextUser.name,
+                  roomId: currentRoom,
+                  audioBase64: fileReader.result,
+                });
+              };
+
+              fileReader.readAsDataURL(
+                new Blob(chuncks, { type: "audio/ogg;codec=opus" })
+              );
+
+              chuncks = [];
+            };
+          });
 
         $(".room-list").on("click", ".room-item", function () {
           currentRoom = this.id;
@@ -107,6 +147,8 @@
 
         socket.on("msgList", (messages) => {
           const mapTemplate = messages.map((message) => {
+            if (message.audioBase64)
+              return `<audio src="${message.audioBase64}" controls="true"></audio>`;
             return `
 
               <div class="message">
@@ -153,16 +195,32 @@
         });
 
         const addMessageDom = (data) => {
-          const element = $(`
+          let template = `
           <div class="message">
               <span class="author">${data.userName}</span><br /><span class="msg-body"
               >${data.message}</span
               >
               </div>
-          `);
+          `;
+          if (data.audioBase64)
+            template = `<audio src="${data.audioBase64}" controls="true"></audio>`;
+
+          const element = $(template);
 
           $("#messages").append(element);
         };
+
+        $("#audio")
+          .mouseup(function (event) {
+            if (permission) mediaRecorder.stop();
+          })
+          .mousedown(async function (event) {
+            try {
+              if (permission) mediaRecorder.start();
+            } catch (error) {
+              console.log(error);
+            }
+          });
         socket.on("msg", addMessageDom);
         function sendMessage(event) {
           const value = $("#field").val();

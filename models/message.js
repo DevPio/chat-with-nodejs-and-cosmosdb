@@ -18,12 +18,10 @@ const getAllMessage = async (id) => {
   }
 };
 
-const newMessage = async ({ message, roomId, userName }) => {
+const newMessage = async (data) => {
   const context = await messageDb();
   const newItem = {
-    message,
-    roomId,
-    userName,
+    ...data,
   };
 
   const createdItem = await context.items.create(newItem);
